@@ -80,4 +80,4 @@ This script is for educational and personal use only. Ensure that automating job
 
 ## Author
 
-Developed by Pernell Louis-Pierre. - Revised by Maximillian Ludwick 
+Developed by Pernell Louis-Pierre. Revised by Maximillian Ludwick 
