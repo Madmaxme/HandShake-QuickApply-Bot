@@ -1,78 +1,83 @@
 # HandShake-QuickApply-Bot
-Helps quick apply to a plethora of jobs available on Handshake, specifically, the ASU version. This should easily help students apply to jobs quickly, especially useful for Juniors and Seniors looking for jobs in their relevant field
 
-This project automates job applications on the Handshake platform using Selenium and the Chrome WebDriver. It simulates user actions to log in, navigate to job postings, and apply to jobs based on certain conditions.
+This bot automates job applications on the Handshake platform, specifically designed for ASU students. It's particularly useful for Juniors and Seniors looking to apply to multiple jobs in their relevant field quickly and efficiently.
 
-#Features
-    Login Automation: Automates the login process using credentials stored in environment variables.
-    Job Posting Scraper: Navigates to job postings and extracts job details.
-    Automated Application: Automatically applies to job postings where the application requirements are already satisfied or       minimal user input is needed.
-    Pagination Handling: Iterates over multiple pages of job listings and applies to all available jobs.
-    Dynamic Form Handling: Handles various job application forms, identifying which fields are pre-populated and which require     input.
+## Features
 
-Before running the script, make sure you have the following:
+- **Login Automation**: Automates the login process using credentials stored in environment variables.
+- **Job Posting Scraper**: Navigates through job postings and extracts job details.
+- **Automated Application**: Applies to job postings where the application requirements are already satisfied or minimal user input is needed.
+- **Pagination Handling**: Iterates over multiple pages of job listings.
+- **Dynamic Form Handling**: Handles various job application forms, identifying which fields are pre-populated and which require input.
+- **Application Tracking**: Counts and logs successful applications, including job titles.
 
-    Python 3.x installed on your system. You can achieve this by downloading python from their website (https://www.python.org/downloads/)
-    Selenium for browser automation:  pip install selenium
-    WebDriver Manager for automatic ChromeDriver Management: pip install webdriver-manager
-    dotenv to manage environment variables: pip install python-dotenv
-    Google Chrome installed on your machine. (Make sure it is the latest version as the code in the file will utilize the most recent version.
+## Prerequisites
 
-Environment Setup 
-(The section below is if you add code that can utilize AI to create cover letters and things of that nature)
-You'll need a .env file with the following environment variables for secure handling of credentials and user data:
-# .env file
-    HANDSHAKE_EMAIL=your_handshake_email
-    HANDSHAKE_PASSWORD=your_handshake_password
-    NAME=your_name
-    LINKEDIN_EMAIL=your_linkedin_email
-    Phone_Number=your_phone_number
-    Residency=your_location
-    Employed_Currently=employed_status (yes/no)
-    Need_Visa=visa_status (yes/no)
-    YearsOfCoding=number_of_years_of_experience
-    EXPERIENCE=description_of_experience
-    LanguagesKnown=languages_you_speak
-    CodingLanguagesKnown=coding_languages_you_know
-Create a .env file in the project root directory with your Handshake login details and additional context details as shown above.
+Before running the script, ensure you have:
 
-To run the script, follow these steps:
+- Python 3.x installed
+- Selenium: `pip install selenium`
+- WebDriver Manager: `pip install webdriver-manager`
+- python-dotenv: `pip install python-dotenv`
+- Google Chrome (latest version)
 
-    Open a terminal and navigate to the project directory.
-    Run the Python script:
-      python AutomatedHandshake.py
+## Environment Setup
 
-I personally open a terminal in VSCode and run it through there as it is waay easier to start and stop it when necessary.
+Create a `.env` file in the project root directory with your Handshake login details:
 
-The script will:
-    Open Chrome and navigate to the Handshake login page.
-    Log in using your credentials.
-    Iterate through job postings and apply to each job where the requirements are met.
+```
+HANDSHAKE_EMAIL=your_handshake_email
+HANDSHAKE_PASSWORD=your_handshake_password
+```
 
-Handling Duo Authentication
-If your institution uses Duo authentication for Handshake login, you will need to authenticate manually when prompted by Duo. The script waits until the authentication is complete.
+## Running the Script
 
-How the Script Works
-Login Process:
-    The script starts by logging in using the credentials from the .env file. Once logged in, it navigates to the job postings page.
+1. Open a terminal and navigate to the project directory.
+2. Run the script: `python AutomatedHandshake.py`
 
-Job Posting Scraper:
-    The script identifies all available job postings on the current page. For each job, it opens the job details and checks if the application requirements are already satisfied.
+## How the Script Works
 
-Automated Application:
-    If the job application requirements (e.g., resume, cover letter) are pre-populated, the script submits the application automatically. The script uses logic to handle multiple form fields, including dropdowns and input fields, based on the number of required fields.
+### Login Process
+- The script logs in using the credentials from the `.env` file and navigates to the job postings page.
 
-Pagination: 
-    After completing the applications on the current page, the script navigates to the next page and repeats the process until all jobs have been processed.
+### Job Posting Scraper
+- Identifies all available job postings on the current page.
+- Opens each job listing to check application requirements.
 
-Potential Improvements
-AI Integration:
-    The context dictionary allows for potential integration of AI-generated cover letters or additional automation around personalized job applications.
-Error Handling:
-    Basic error handling is in place, but improvements can be made by adding more specific exceptions.
-    
-Disclaimer:
-    This script is for educational and personal use only. Please ensure that automating job applications complies with the terms of service of the platforms you're using, such as Handshake. Use at your own discretion.
+### Automated Application Process
+1. **Job Title Extraction**: The script extracts the title of each job being processed.
+2. **Application Form Analysis**: 
+   - Checks the number of form fields (fieldsets) in the application.
+   - Counts the number of dropdown menus.
+3. **Application Decision**:
+   - If there's more than one dropdown, the application is skipped.
+   - For applications with no fields or one field, it proceeds to apply.
+   - For applications with multiple fields but only one dropdown, it attempts to fill the form.
+4. **Form Filling**:
+   - Autopopulated fields (indicated by SVG elements) are left as is.
+   - For non-autopopulated fields, it either selects a suggested option or chooses from a dropdown.
+5. **Submission and Verification**:
+   - Clicks the submit button.
+   - Waits for the application modal to disappear, confirming successful submission.
+6. **Logging**:
+   - Successfully submitted applications are logged with the job title and a running count.
 
-Author
-    Developed by Pernell Louis-Pierre.
+### Pagination
+- After processing all jobs on a page, the script moves to the next page and repeats the process.
+
+### Error Handling
+- If an application can't be submitted or an error occurs, the script logs the issue and moves on to the next job.
+
+## Potential Improvements
+
+- AI Integration: Potential for AI-generated cover letters or personalized application content.
+- Enhanced Error Handling: More specific exception handling for robustness.
+- User Interface: Develop a GUI for easier operation and monitoring.
+
+## Disclaimer
+
+This script is for educational and personal use only. Ensure that automating job applications complies with Handshake's terms of service. Use at your own discretion.
+
+## Author
+
+Developed by Pernell Louis-Pierre. - Revised by Maximillian Ludwick 
