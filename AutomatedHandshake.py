@@ -10,6 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException, StaleElementReferenceException
 from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
+from selenium.webdriver.common.keys import Keys
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -108,29 +109,38 @@ def login_to_handshake(driver):
         raise
 
 def process_job(driver, job):
-    global successful_applications
     try:
+        logging.info("Starting to process a new job")
         job.click()
+        logging.info("Clicked on job listing")
+        
         job_preview = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, ".//div[contains(@aria-label, 'Job Preview')]"))
         )
+        logging.info("Job preview loaded")
 
         try:
             apply_button = WebDriverWait(job_preview, 5).until(
                 EC.presence_of_element_located((By.XPATH, ".//span[text()='Apply' or text()='Apply Externally']"))
             )
+            logging.info(f"Found apply button with text: {apply_button.text}")
             
             if apply_button.text == "Apply Externally":
+                logging.info("External application - skipping")
                 return
             elif apply_button.text == "Apply":
+                logging.info("Clicking 'Apply' button")
                 apply_button.click()
                 if process_application(driver):
-                    successful_applications += 1
+                    logging.info("Application process completed successfully")
+                else:
+                    logging.warning("Application process did not complete successfully")
             else:
-                logging.warning("Unexpected apply button text: " + apply_button.text)
+                logging.warning(f"Unexpected apply button text: {apply_button.text}")
                 return
 
         except TimeoutException:
+            logging.warning("Could not find apply button within timeout")
             return
 
     except Exception as e:
@@ -146,46 +156,52 @@ def click_dismiss_button(driver):
         logging.error("Could not find dismiss button")
 
 def process_application(driver):
+    global successful_applications
     try:
+        logging.info("Starting application process")
         modal = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, ".//span[contains(@data-hook, 'apply-modal-content')]"))
         )
+        logging.info("Application modal found")
 
         submit_application = WebDriverWait(modal, 10).until(
             EC.element_to_be_clickable((By.XPATH, ".//span[contains(@data-hook, 'submit-application')]"))
         )
+        logging.info("Submit application button found")
 
-        fieldsets = modal.find_elements(By.TAG_NAME, "fieldset")
-        dropdown_count = len([f for f in fieldsets if f.find_elements(By.XPATH, ".//span[contains(@class, 'Select-arrow')]")])
+        # Find all dropdown elements
+        dropdowns = modal.find_elements(By.XPATH, ".//div[contains(@class, 'Select-control')]")
+        logging.info(f"Found {len(dropdowns)} dropdown(s) in the application form")
 
-        if dropdown_count > 1:
+        if len(dropdowns) > 1:
+            logging.info("Multiple fields detected. Exiting application.")
             click_dismiss_button(driver)
             return False
 
-        if len(fieldsets) == 0:
-            submit_application.click()
-        elif len(fieldsets) == 1:
-            if not fieldsets[0].find_elements(By.TAG_NAME, "svg"):
-                recently_added_section = modal.find_elements(By.XPATH, ".//div[starts-with(@class, 'style__suggested___')]")
-                if recently_added_section:
-                    recently_added_section[0].click()
-                else:
-                    select_dropdown_option(driver, fieldsets[0])
-            submit_application.click()
-        else:
-            if dropdown_count == 1:
-                dropdown_fieldset = next(f for f in fieldsets if f.find_elements(By.XPATH, ".//span[contains(@class, 'Select-arrow')]"))
-                select_dropdown_option(driver, dropdown_fieldset)
-            submit_application.click()
+        if len(dropdowns) == 1:
+            logging.info("Single dropdown detected. Attempting to select resume.")
+            select_dropdown_option(driver, dropdowns[0])
+
+        logging.info("Waiting before clicking submit button.")
+        time.sleep(2)  # Wait a bit before clicking submit
+        submit_application.click()
+        logging.info("Clicked submit button")
 
         # Check if application was submitted successfully
         try:
-            WebDriverWait(driver, 5).until(
+            WebDriverWait(driver, 10).until(
                 EC.invisibility_of_element_located((By.XPATH, ".//span[contains(@data-hook, 'apply-modal-content')]"))
             )
-            logging.info(f"Application submitted successfully. Total successful applications: {successful_applications + 1}")
+            successful_applications += 1
+            logging.info(f"Application submitted successfully. Total successful applications: {successful_applications}")
             return True
         except TimeoutException:
+            logging.warning("Application submission timed out")
+            try:
+                error_message = driver.find_element(By.XPATH, "//div[contains(@class, 'error')]").text
+                logging.error(f"Error message found: {error_message}")
+            except NoSuchElementException:
+                logging.info("No error message found on the page")
             click_dismiss_button(driver)
             return False
 
@@ -194,25 +210,48 @@ def process_application(driver):
         click_dismiss_button(driver)
         return False
 
-def select_dropdown_option(driver, fieldset):
+def select_dropdown_option(driver, dropdown_element):
     try:
-        select_arrow = WebDriverWait(fieldset, 10).until(
-            EC.element_to_be_clickable((By.XPATH, ".//span[contains(@class, 'Select-arrow')]"))
-        )
-        select_arrow.click()
+        logging.info("Starting resume dropdown option selection")
         
-        item = WebDriverWait(fieldset, 10).until(
-            EC.presence_of_element_located((By.XPATH, ".//div[contains(@class, 'Select-menu-outer')]"))
+        # Check if there's already a selected value
+        selected_value = dropdown_element.find_elements(By.XPATH, ".//span[contains(@class, 'Select-value-label')]")
+        if selected_value:
+            logging.info(f"Dropdown already has a selected value: {selected_value[0].text}")
+            return  # If there's a default value, we don't need to do anything
+
+        # Click to open the dropdown
+        logging.info("Attempting to click dropdown to open it")
+        dropdown_element.click()
+        time.sleep(1)  # Wait for the dropdown to open
+        logging.info("Clicked to open dropdown")
+
+        # Select the first option (assuming it's the resume)
+        options = WebDriverWait(driver, 10).until(
+            EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, 'Select-option')]"))
         )
-        options = item.find_elements(By.XPATH, ".//*")
-        if len(options) > 3:
-            options[3].click()
+        if options:
+            first_option = options[0]
+            first_option_text = first_option.text
+            logging.info(f"Attempting to select first option: {first_option_text}")
+            first_option.click()
+            logging.info(f"Clicked first option: {first_option_text}")
+            
+            # Wait for the selection to be reflected
+            WebDriverWait(driver, 10).until(
+                EC.text_to_be_present_in_element((By.XPATH, ".//span[contains(@class, 'Select-value-label')]"), first_option_text)
+            )
+            logging.info("Resume selection confirmed in dropdown")
         else:
-            options[0].click()
-        
+            logging.warning("No options found in the resume dropdown")
+            dropdown_element.click()  # Close the dropdown if no options found
+
+    except TimeoutException as te:
+        logging.error(f"Timeout while trying to interact with resume dropdown: {str(te)}")
+    except NoSuchElementException as nse:
+        logging.error(f"Could not find expected resume dropdown elements: {str(nse)}")
     except Exception as e:
-        logging.error(f"Error in select_dropdown_option: {str(e)}")
-        raise
+        logging.error(f"Unexpected error in select_dropdown_option: {str(e)}")
 
 def main():
     driver = setup_driver()
